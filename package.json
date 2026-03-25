@@ -1,0 +1,18 @@
+{
+  "name": "esp32data-api",
+  "version": "1.0.0",
+  "description": "Simple Express endpoint to receive float data from an ESP32",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "esp32",
+    "express",
+    "api"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
