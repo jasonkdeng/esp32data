@@ -1,6 +1,6 @@
-# ESP32 Float Data API (Express)
+# ESP32 Float Data API + Dashboard
 
-Simple Node.js + Express API for receiving float sensor readings from an ESP32.
+Node.js + Express API for receiving float sensor readings from an ESP32, plus a React dashboard for visualization.
 
 ## Endpoint
 
@@ -12,11 +12,20 @@ Simple Node.js + Express API for receiving float sensor readings from an ESP32.
 
 ```json
 {
+	"title": "Water Temperature",
 	"value": 23.78
 }
 ```
 
+- title: required, non-empty string label for the reading
 - value: required, float number (for example temperature, pressure, vibration, etc.)
+
+## Readings Feed Endpoint
+
+- Method: GET
+- Path: /api/esp32/readings
+
+Returns the latest readings first, with the latest reading also provided separately.
 
 ## Response Examples
 
@@ -26,7 +35,11 @@ Success (200):
 {
 	"success": true,
 	"message": "Float reading received",
-	"received": 23.78
+	"received": {
+		"title": "Water Temperature",
+		"value": 23.78,
+		"timestamp": "2026-03-25T12:00:00.000Z"
+	}
 }
 ```
 
@@ -35,7 +48,7 @@ Validation error (400):
 ```json
 {
 	"success": false,
-	"error": "Field value must be a valid float number"
+	"error": "Field title must be a non-empty string"
 }
 ```
 
@@ -53,10 +66,23 @@ npm install
 npm start
 ```
 
-3. Server runs at:
+3. In another terminal, run the dashboard:
+
+```bash
+cd dashboard
+npm start
+```
+
+4. API server runs at:
 
 ```text
 http://localhost:3000
+```
+
+5. Dashboard runs at:
+
+```text
+http://localhost:3001
 ```
 
 ## Test With cURL
@@ -64,9 +90,9 @@ http://localhost:3000
 ```bash
 curl -X POST http://localhost:3000/api/esp32/reading \
 	-H "Content-Type: application/json" \
-	-d "{\"value\":25.42}"
+	-d "{\"title\":\"Water Temperature\",\"value\":25.42}"
 ```
 
 ## ESP32 Notes
 
-On the ESP32 side, send a JSON POST request with a float field named value. If your firmware stores a float variable like sensorValue, your payload should map that variable to value.
+On the ESP32 side, send JSON with both a string title and a float value. If your firmware stores variables like sensorName and sensorValue, map them to title and value in the payload.

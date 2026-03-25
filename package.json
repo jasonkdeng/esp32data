@@ -4,7 +4,10 @@
   "description": "Simple Express endpoint to receive float data from an ESP32",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev:api": "node server.js",
+    "dev:dashboard": "npm --prefix dashboard start",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:dashboard\""
   },
   "keywords": [
     "esp32",
@@ -14,5 +17,8 @@
   "license": "MIT",
   "dependencies": {
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
   }
 }
