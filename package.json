@@ -16,7 +16,9 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "express": "^4.19.2"
+    "dotenv": "^17.3.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.3.1"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"
