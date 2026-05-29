@@ -2,6 +2,18 @@
 
 Node.js + Express API for receiving float sensor readings from an ESP32, plus a React dashboard for visualization.
 
+## Architecture
+
+The runtime is split into small modules:
+
+- `server.js` boots the app, serves the dashboard build when present, and starts the HTTP listener.
+- `app.js` creates the Express app and wires the routes.
+- `routes/esp32.js` owns the ESP32 ingestion and readings endpoints.
+- `middleware/require-api-key.js` validates device credentials.
+- `lib/reading-store.js` keeps local readings in memory and validates payloads.
+- `lib/config.js` parses environment variables and validates the device key map.
+- `lib/supabase.js` talks to Supabase through the REST API.
+
 ## Endpoint
 
 - Method: POST
@@ -116,14 +128,16 @@ npm start
 4. API server runs at:
 
 ```text
-http://localhost:3000
+http://localhost:3002
 ```
 
 5. Dashboard runs at:
 
 ```text
-http://localhost:3001
+http://localhost:3000
 ```
+
+If you run the dashboard on port 3000 during local development, the API is expected on port 3002.
 
 ## Test With cURL
 
@@ -189,7 +203,9 @@ This project can be deployed to Vercel using serverless API routes (the `api/` f
 2. In Vercel (or your environment), set these environment variables:
 
 - `SUPABASE_URL` — your Supabase project URL (e.g. `https://xyz.supabase.co`)
-- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY` — your Supabase API key (service role key recommended for inserts from a trusted backend)
+- `SUPABASE_SECRET_KEY` — preferred server-side key for trusted backend access
+- `SUPABASE_PUBLISHABLE_KEY` — only if your project is configured for public/read-only access patterns
+- Legacy fallbacks still supported: `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, or `SUPABASE_KEY`
 - `ESP32_DEVICE_KEYS` — JSON object mapping device IDs to API keys (same format as local `.env`)
 
 3. Deploy to Vercel. The API routes are:
@@ -203,3 +219,33 @@ Notes:
 - Serverless functions are stateless — do not rely on in-memory arrays for persistence.
 - Use the Supabase SQL migration provided to create the `readings` table before sending data.
 - Ensure the Supabase key is kept secret in Vercel env vars.
+
+## Data Flow
+
+### Local development
+
+```mermaid
+flowchart LR
+	ESP32[ESP32 firmware] -->|HTTP POST /api/esp32/reading| API[Node API]
+	API -->|validate device + payload| STORE[Local in-memory store]
+	API -->|best effort write| SUPA[Supabase readings table]
+	API -->|GET /api/esp32/readings| DASH[React dashboard]
+	DASH -->|poll every 2s| API
+```
+
+### Deployed flow on Vercel
+
+```mermaid
+flowchart LR
+	ESP32[ESP32 firmware] -->|HTTPS POST /api/esp32/reading| VERCEL[Vercel API route]
+	VERCEL -->|validate device + payload| SUPA[Supabase readings table]
+	DASH[React dashboard on Vercel] -->|HTTPS GET /api/esp32/readings| VERCEL
+	VERCEL --> SUPA
+```
+
+### Request path
+
+1. The ESP32 sends a JSON payload with `title` and `value`.
+2. The API checks `x-device-id` and `x-api-key`.
+3. The reading is inserted into Supabase.
+4. The dashboard polls `GET /api/esp32/readings` and renders the latest rows.
