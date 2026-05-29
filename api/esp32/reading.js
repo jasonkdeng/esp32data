@@ -1,4 +1,5 @@
 const { insertReading } = require('../../lib/supabase');
+const { applyCors, handleCorsPreflight } = require('../../lib/cors');
 
 const maxDevices = 100; // allow more for cloud
 
@@ -18,10 +19,16 @@ function parseDeviceKeys() {
 
 module.exports = async function handler(req, res) {
   try {
+    if (handleCorsPreflight(req, res, ['POST', 'OPTIONS'])) {
+      return;
+    }
+
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST');
       return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
+
+    applyCors(res, ['POST', 'OPTIONS']);
 
     const allowedDeviceKeyMap = parseDeviceKeys();
     if (!allowedDeviceKeyMap) {
@@ -82,6 +89,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Float reading accepted', received: reading });
   } catch (err) {
     console.error('Unhandled /api/esp32/reading error', err);
+    applyCors(res, ['POST', 'OPTIONS']);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
