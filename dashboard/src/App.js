@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+
+const getApiUrl = (path) => `${API_BASE_URL}${path}`;
+
 function App() {
   const [readings, setReadings] = useState([]);
   const [latest, setLatest] = useState(null);
@@ -12,7 +16,7 @@ function App() {
 
     const fetchReadings = async () => {
       try {
-        const response = await fetch('/api/esp32/readings');
+        const response = await fetch(getApiUrl('/api/esp32/readings'));
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }

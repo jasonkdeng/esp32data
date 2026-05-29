@@ -1,8 +1,11 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
+const { insertReading, getReadings } = require('./lib/supabase');
 const port = process.env.PORT || 3000;
 const maxDevices = 5;
 const deviceKeysRaw = process.env.ESP32_DEVICE_KEYS;
@@ -97,6 +100,29 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/esp32/readings', (req, res) => {
+  // If Supabase is configured, prefer the durable store
+  if (process.env.SUPABASE_URL) {
+    getReadings(MAX_READINGS)
+      .then((rows) => {
+        return res.status(200).json({
+          success: true,
+          count: Array.isArray(rows) ? rows.length : 0,
+          latest: Array.isArray(rows) ? rows[0] || null : null,
+          readings: rows
+        });
+      })
+      .catch((err) => {
+        console.error('Supabase read failed, falling back to local store', err);
+        return res.status(200).json({
+          success: true,
+          count: readings.length,
+          latest: readings[0] || null,
+          readings
+        });
+      });
+    return;
+  }
+
   res.status(200).json({
     success: true,
     count: readings.length,
@@ -146,6 +172,20 @@ app.post('/api/esp32/reading', ingestionLimiter, requireApiKey, (req, res) => {
 
   console.log(`ESP32 float reading received | ${reading.deviceId} | ${reading.title}: ${reading.value}`);
 
+  // Persist to Supabase if configured (best-effort, do not fail ingestion on insert error)
+  if (process.env.SUPABASE_URL) {
+    const persistent = {
+      device_id: reading.deviceId,
+      title: reading.title,
+      value: reading.value,
+      timestamp: reading.timestamp
+    };
+
+    insertReading(persistent).catch((err) => {
+      console.error('Supabase insert failed (local accepted):', err);
+    });
+  }
+
   return res.status(200).json({
     success: true,
     message: 'Float reading received',
@@ -157,3 +197,21 @@ app.listen(port, () => {
   console.log(`ESP32 API listening on port ${port}`);
   console.log(`Configured ESP32 device IDs: ${configuredDeviceIds.join(', ')}`);
 });
+
+// Serve the React dashboard static build (if present).
+// This lets you deploy a single Node app that serves both the API and the dashboard build.
+const buildPath = path.join(__dirname, 'dashboard', 'build');
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+
+  app.get('*', (req, res) => {
+    // If the request is for the API, skip and let API routes handle it.
+    if (req.path.startsWith('/api') || req.path === '/health') {
+      return res.status(404).json({ success: false, error: 'Not found' });
+    }
+
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+
+  console.log('Serving dashboard from', buildPath);
+}

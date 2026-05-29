@@ -179,3 +179,27 @@ void setup() {
 	}
 }
 ```
+
+## Deploying to Vercel with Supabase
+
+This project can be deployed to Vercel using serverless API routes (the `api/` folder) and Supabase for durable storage.
+
+1. Create a Supabase project and run the SQL in `supabase/create_readings_table.sql` in the Supabase SQL editor to create the `readings` table.
+
+2. In Vercel (or your environment), set these environment variables:
+
+- `SUPABASE_URL` — your Supabase project URL (e.g. `https://xyz.supabase.co`)
+- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY` — your Supabase API key (service role key recommended for inserts from a trusted backend)
+- `ESP32_DEVICE_KEYS` — JSON object mapping device IDs to API keys (same format as local `.env`)
+
+3. Deploy to Vercel. The API routes are:
+
+- `POST /api/esp32/reading` — validate device and persist reading to Supabase
+- `GET  /api/esp32/readings` — fetch latest/readings from Supabase
+
+4. Update your ESP32 code to POST to `https://<your-vercel-domain>/api/esp32/reading` using HTTPS and `WiFiClientSecure` (see earlier HTTPS example).
+
+Notes:
+- Serverless functions are stateless — do not rely on in-memory arrays for persistence.
+- Use the Supabase SQL migration provided to create the `readings` table before sending data.
+- Ensure the Supabase key is kept secret in Vercel env vars.
