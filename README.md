@@ -62,15 +62,51 @@ When a client exceeds the rate limit, the API responds with HTTP 429 and:
 
 ## Expected Request Body
 
+The API accepts either a single reading or a batch of readings.
+
+Single reading:
+
 ```json
 {
 	"title": "Water Temperature",
-	"value": 23.78
+	"value": 23.78,
+	"timestamp": "2026-03-25T12:00:00.000Z"
 }
 ```
 
-- title: required, non-empty string label for the reading
-- value: required, float number (for example temperature, pressure, vibration, etc.)
+Batch reading with flat fields:
+
+```json
+{
+	"title": "Water Temperature",
+	"value": 23.78,
+	"title2": "Water Pressure",
+	"value2": 101.3,
+	"title3": "Flow Rate",
+	"value3": 8.12,
+	"title4": "Vibration",
+	"value4": 0.04,
+	"timestamp": "2026-03-25T12:00:00.000Z"
+}
+```
+
+Batch reading with an array:
+
+```json
+{
+	"timestamp": "2026-03-25T12:00:00.000Z",
+	"readings": [
+		{ "title": "Water Temperature", "value": 23.78 },
+		{ "title": "Water Pressure", "value": 101.3 },
+		{ "title": "Flow Rate", "value": 8.12 },
+		{ "title": "Vibration", "value": 0.04 }
+	]
+}
+```
+
+- title/value pairs are required for each reading
+- timestamp is optional and will be applied to every reading in the batch when provided
+- the dashboard will show each reading as a separate row and group them by title
 
 ## Readings Feed Endpoint
 
@@ -86,12 +122,11 @@ Success (200):
 ```json
 {
 	"success": true,
-	"message": "Float reading received",
-	"received": {
-		"title": "Water Temperature",
-		"value": 23.78,
-		"timestamp": "2026-03-25T12:00:00.000Z"
-	}
+	"message": "Float readings accepted",
+	"count": 4,
+	"receivedReadings": [
+		{ "title": "Water Temperature", "value": 23.78, "timestamp": "2026-03-25T12:00:00.000Z" }
+	]
 }
 ```
 
@@ -100,7 +135,7 @@ Validation error (400):
 ```json
 {
 	"success": false,
-	"error": "Field title must be a non-empty string"
+	"error": "Field title2 must be provided with its matching pair"
 }
 ```
 
@@ -212,7 +247,7 @@ For the dashboard, optionally set `REACT_APP_API_FALLBACK_URL` to a second API b
 
 3. Deploy to Vercel. The API routes are:
 
-- `/` — friendly landing page with quick links and a small POST tester
+- `/` — friendly landing page with quick links, a single-reading tester, and a 9-reading batch tester
 - `GET /api/health` — basic health check for the deployment
 - `POST /api/esp32/reading` — validate device and persist reading to Supabase
 - `GET  /api/esp32/readings` — fetch latest/readings from Supabase

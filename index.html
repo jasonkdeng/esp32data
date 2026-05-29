@@ -91,6 +91,10 @@
         margin-top: 18px;
       }
 
+      .grid-full {
+        grid-column: span 12;
+      }
+
       .card {
         grid-column: span 6;
         padding: 22px;
@@ -186,6 +190,23 @@
         gap: 12px;
       }
 
+      .batch-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .batch-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .batch-row {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 12px;
+      }
+
       label {
         display: grid;
         gap: 8px;
@@ -228,6 +249,8 @@
       @media (max-width: 860px) {
         .card { grid-column: span 12; }
         .fields { grid-template-columns: 1fr; }
+        .batch-fields { grid-template-columns: 1fr; }
+        .batch-row { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -292,6 +315,75 @@
           </form>
         </article>
 
+        <article class="card grid-full">
+          <h2>Send a 9-Reading Batch</h2>
+          <p>Use this form to test a payload with nine separate readings and one shared timestamp.</p>
+          <form class="form" id="batch-form">
+            <div class="batch-fields">
+              <label>
+                Device ID
+                <input id="batchDeviceId" name="batchDeviceId" placeholder="esp32-1" value="esp32-1" />
+              </label>
+              <label>
+                API Key
+                <input id="batchApiKey" name="batchApiKey" placeholder="waturbinekey1" />
+              </label>
+              <label>
+                Shared Timestamp
+                <input id="batchTimestamp" name="batchTimestamp" placeholder="2026-03-25T12:00:00.000Z" />
+              </label>
+              <label>
+                Mode
+                <input value="readings array" readonly />
+              </label>
+            </div>
+
+            <div class="batch-grid" id="batch-rows">
+              <div class="batch-row">
+                <label>Title 1<input name="title1" value="Water Temperature" /></label>
+                <label>Value 1<input name="value1" type="number" step="0.01" value="25.42" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 2<input name="title2" value="Water Pressure" /></label>
+                <label>Value 2<input name="value2" type="number" step="0.01" value="101.30" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 3<input name="title3" value="Flow Rate" /></label>
+                <label>Value 3<input name="value3" type="number" step="0.01" value="8.12" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 4<input name="title4" value="Vibration" /></label>
+                <label>Value 4<input name="value4" type="number" step="0.01" value="0.04" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 5<input name="title5" value="Current" /></label>
+                <label>Value 5<input name="value5" type="number" step="0.01" value="1.28" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 6<input name="title6" value="Voltage" /></label>
+                <label>Value 6<input name="value6" type="number" step="0.01" value="12.44" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 7<input name="title7" value="Humidity" /></label>
+                <label>Value 7<input name="value7" type="number" step="0.01" value="48.10" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 8<input name="title8" value="Tank Level" /></label>
+                <label>Value 8<input name="value8" type="number" step="0.01" value="73.55" /></label>
+              </div>
+              <div class="batch-row">
+                <label>Title 9<input name="title9" value="Pump Speed" /></label>
+                <label>Value 9<input name="value9" type="number" step="0.01" value="1450" /></label>
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button class="btn primary" type="submit">Send 9-Reading Batch</button>
+              <button class="btn secondary" type="button" data-fill-batch>Fill sample batch</button>
+            </div>
+          </form>
+        </article>
+
         <article class="card" style="grid-column: span 12;">
           <h2>Response</h2>
           <p>The result of the test request will appear here.</p>
@@ -306,6 +398,7 @@
 
     <script>
       const form = document.getElementById('test-form');
+      const batchForm = document.getElementById('batch-form');
       const output = document.getElementById('output');
 
       document.querySelectorAll('[data-nav]').forEach((button) => {
@@ -339,6 +432,76 @@
           output.textContent = `Status: ${response.status}\n\n${text || '(empty response)'}`;
         } catch (error) {
           output.textContent = `Request failed:\n${error.message || error}`;
+        }
+      });
+
+      const batchSample = [
+        ['Water Temperature', 25.42],
+        ['Water Pressure', 101.30],
+        ['Flow Rate', 8.12],
+        ['Vibration', 0.04],
+        ['Current', 1.28],
+        ['Voltage', 12.44],
+        ['Humidity', 48.10],
+        ['Tank Level', 73.55],
+        ['Pump Speed', 1450]
+      ];
+
+      document.querySelector('[data-fill-batch]').addEventListener('click', () => {
+        batchSample.forEach(([title, value], index) => {
+          const titleInput = batchForm.querySelector(`[name="title${index + 1}"]`);
+          const valueInput = batchForm.querySelector(`[name="value${index + 1}"]`);
+
+          if (titleInput) {
+            titleInput.value = title;
+          }
+
+          if (valueInput) {
+            valueInput.value = value;
+          }
+        });
+        batchForm.querySelector('[name="batchTimestamp"]').value = new Date().toISOString();
+      });
+
+      batchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const deviceId = batchForm.querySelector('[name="batchDeviceId"]').value.trim();
+        const apiKey = batchForm.querySelector('[name="batchApiKey"]').value.trim();
+        const timestamp = batchForm.querySelector('[name="batchTimestamp"]').value.trim();
+        const readings = [];
+
+        for (let index = 1; index <= 9; index += 1) {
+          const titleInput = batchForm.querySelector(`[name="title${index}"]`);
+          const valueInput = batchForm.querySelector(`[name="value${index}"]`);
+          const title = titleInput ? titleInput.value.trim() : '';
+          const value = valueInput ? Number(valueInput.value) : NaN;
+
+          if (title) {
+            readings.push({ title, value });
+          }
+        }
+
+        output.textContent = 'Sending 9-reading batch...';
+
+        try {
+          const response = await fetch('/api/esp32/reading', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-device-id': deviceId,
+              'x-api-key': apiKey
+            },
+            body: JSON.stringify({
+              timestamp: timestamp || undefined,
+              readings
+            })
+          });
+
+          const text = await response.text();
+          output.textContent = `Status: ${response.status}\n\n${text || '(empty response)'}`;
+        } catch (error) {
+          output.textContent = `Batch request failed:\n${error.message || error}`;
         }
       });
     </script>

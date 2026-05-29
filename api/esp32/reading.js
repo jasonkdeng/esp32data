@@ -1,5 +1,6 @@
 const { insertReading } = require('../../lib/supabase');
 const { applyCors, handleCorsPreflight } = require('../../lib/cors');
+const { createReading, createPersistentReading, validateReadingPayload } = require('../../lib/reading-store');
 
 const maxDevices = 100; // allow more for cloud
 
@@ -54,39 +55,34 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ success: false, error: 'Unauthorized: invalid or missing API key' });
     }
 
-    const { title, value } = req.body || {};
-    if (value === undefined) {
-      return res.status(400).json({ success: false, error: 'Missing required field: value' });
+    const payload = validateReadingPayload(req.body);
+
+    if (!payload.valid) {
+      return res.status(payload.status).json({ success: false, error: payload.error });
     }
 
-    if (typeof title !== 'string' || title.trim() === '') {
-      return res.status(400).json({ success: false, error: 'Field title must be a non-empty string' });
-    }
-
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
-      return res.status(400).json({ success: false, error: 'Field value must be a valid float number' });
-    }
-
-    const reading = {
-      device_id: deviceId,
-      title: title.trim(),
-      value: numericValue,
-      timestamp: new Date().toISOString()
-    };
+    const readings = payload.readings.map((item) => createReading(deviceId, item.title, item.value, item.timestamp));
 
     if (process.env.SUPABASE_URL) {
-      Promise.resolve()
-        .then(() => insertReading(reading))
-        .then(() => {
-          console.log(`Inserted reading for ${deviceId} ${reading.title}: ${reading.value}`);
-        })
-        .catch((err) => {
-          console.error('Supabase insert error (local accepted)', err);
-        });
+      readings.forEach((reading) => {
+        Promise.resolve()
+          .then(() => insertReading(createPersistentReading(reading)))
+          .then(() => {
+            console.log(`Inserted reading for ${deviceId} ${reading.title}: ${reading.value}`);
+          })
+          .catch((err) => {
+            console.error('Supabase insert error (local accepted)', err);
+          });
+      });
     }
 
-    return res.status(200).json({ success: true, message: 'Float reading accepted', received: reading });
+    return res.status(200).json({
+      success: true,
+      message: 'Float readings accepted',
+      count: readings.length,
+      receivedReadings: readings,
+      received: readings[0] || null
+    });
   } catch (err) {
     console.error('Unhandled /api/esp32/reading error', err);
     applyCors(res, ['POST', 'OPTIONS']);
