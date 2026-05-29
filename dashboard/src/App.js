@@ -7,7 +7,6 @@ const getApiUrl = (path) => `${API_BASE_URL}${path}`;
 
 function App() {
   const [readings, setReadings] = useState([]);
-  const [latest, setLatest] = useState(null);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
 
@@ -29,7 +28,6 @@ function App() {
         }
 
         setReadings(Array.isArray(payload.readings) ? payload.readings : []);
-        setLatest(payload.latest || null);
         setLastUpdated(new Date().toLocaleTimeString());
         setError('');
       } catch (err) {
@@ -83,19 +81,6 @@ function App() {
         </header>
 
         {error && <div className="error-banner">API error: {error}</div>}
-
-        <section className="latest-card" aria-label="Latest reading">
-          <h2>Latest Reading</h2>
-          {latest ? (
-            <>
-              <div className="latest-title">{latest.title}</div>
-              <div className="latest-value">{formatNumber(latest.value)}</div>
-              <div className="latest-time">{formatDate(latest.timestamp)}</div>
-            </>
-          ) : (
-            <div className="empty-state">No readings received yet.</div>
-          )}
-        </section>
 
         <section className="summary-grid" aria-label="Reading summary by title">
           {groupedSummary.length === 0 && (
