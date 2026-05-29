@@ -2,8 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+const API_FALLBACK_URL = process.env.REACT_APP_API_FALLBACK_URL || '';
 
 const getApiUrl = (path) => `${API_BASE_URL}${path}`;
+const getFallbackApiUrl = (path) => `${API_FALLBACK_URL}${path}`;
+
+async function fetchReadingsFrom(url) {
+  const response = await fetch(url, {
+    credentials: 'omit'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
 
 function App() {
   const [readings, setReadings] = useState([]);
@@ -15,14 +29,26 @@ function App() {
 
     const fetchReadings = async () => {
       try {
-        const response = await fetch(getApiUrl('/api/esp32/readings'), {
-          credentials: 'omit'
-        });
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+        const primaryUrl = getApiUrl('/api/esp32/readings');
+        let payload;
+
+        try {
+          payload = await fetchReadingsFrom(primaryUrl);
+        } catch (primaryError) {
+          if (API_FALLBACK_URL && API_FALLBACK_URL !== API_BASE_URL) {
+            const fallbackUrl = getFallbackApiUrl('/api/esp32/readings');
+            console.warn('Primary dashboard fetch failed, trying fallback endpoint', {
+              primaryUrl,
+              fallbackUrl,
+              error: primaryError.message || primaryError
+            });
+
+            payload = await fetchReadingsFrom(fallbackUrl);
+          } else {
+            throw primaryError;
+          }
         }
 
-        const payload = await response.json();
         if (!isMounted) {
           return;
         }
@@ -31,6 +57,7 @@ function App() {
         setLastUpdated(new Date().toLocaleTimeString());
         setError('');
       } catch (err) {
+        console.error('Dashboard readings fetch failed', err);
         if (isMounted) {
           setError(err.message || 'Unable to fetch readings');
         }

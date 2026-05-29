@@ -208,6 +208,8 @@ This project can be deployed to Vercel using serverless API routes (the `api/` f
 - Legacy fallbacks still supported: `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, or `SUPABASE_KEY`
 - `ESP32_DEVICE_KEYS` — JSON object mapping device IDs to API keys (same format as local `.env`)
 
+For the dashboard, optionally set `REACT_APP_API_FALLBACK_URL` to a second API base URL. The dashboard will try the primary proxied/API URL first, then log and fall back to this URL if the first request fails.
+
 3. Deploy to Vercel. The API routes are:
 
 - `POST /api/esp32/reading` — validate device and persist reading to Supabase

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+require('dotenv').config();
 const { createConfig } = require('./lib/config');
 const { createApp } = require('./app');
 const { getReadings, insertReading } = require('./lib/supabase');
