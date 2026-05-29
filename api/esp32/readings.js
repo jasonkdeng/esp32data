@@ -1,12 +1,12 @@
-const { getReadings } = require('../../../lib/supabase');
+const { getReadings } = require('../../lib/supabase');
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
   try {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET');
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
     const rows = await getReadings(200);
     const latest = Array.isArray(rows) ? rows[0] || null : null;
     return res.status(200).json({ success: true, count: Array.isArray(rows) ? rows.length : 0, latest, readings: rows });

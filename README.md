@@ -212,6 +212,7 @@ For the dashboard, optionally set `REACT_APP_API_FALLBACK_URL` to a second API b
 
 3. Deploy to Vercel. The API routes are:
 
+- `GET /api/health` — basic health check for the deployment
 - `POST /api/esp32/reading` — validate device and persist reading to Supabase
 - `GET  /api/esp32/readings` — fetch latest/readings from Supabase
 
@@ -220,6 +221,7 @@ For the dashboard, optionally set `REACT_APP_API_FALLBACK_URL` to a second API b
 Notes:
 - Serverless functions are stateless — do not rely on in-memory arrays for persistence.
 - Use the Supabase SQL migration provided to create the `readings` table before sending data.
+- The Vercel API routes are located in `api/esp32/` and import shared helpers from `lib/` using relative paths that must remain correct when files move.
 - Ensure the Supabase key is kept secret in Vercel env vars.
 
 ## Data Flow
