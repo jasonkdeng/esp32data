@@ -212,6 +212,7 @@ For the dashboard, optionally set `REACT_APP_API_FALLBACK_URL` to a second API b
 
 3. Deploy to Vercel. The API routes are:
 
+- `/` — friendly landing page with quick links and a small POST tester
 - `GET /api/health` — basic health check for the deployment
 - `POST /api/esp32/reading` — validate device and persist reading to Supabase
 - `GET  /api/esp32/readings` — fetch latest/readings from Supabase
