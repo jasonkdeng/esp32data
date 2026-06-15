@@ -20,9 +20,69 @@ async function fetchReadingsFrom(url) {
 }
 
 function App() {
+
+  const [activeTab, setActiveTab] = useState('Sensor Dashboard');
+  const [servoAngle, setServoAngle] = useState(90);
+
   const [readings, setReadings] = useState([]);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
+  
+  // Sends requests to backend
+  const moveServoCommand = async () => {
+
+    const response = await fetch(
+      getApiUrl('/api/esp32/move-servo'), 
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          angle: servoAngle
+        })
+      }
+    );
+
+    console.log(await response.json());
+  };
+
+  const setResetPositionCommand = async () => {
+    const response = await fetch(
+      getApiUrl('/api/esp32/reset-position'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          angle: servoAngle
+        })
+      }
+    );
+
+    const data = await response.json();
+    console.log(data)
+  };
+
+  const setBrakePositionCommand = async () => {
+    const response = await fetch(
+      getApiUrl('/api/esp32/brake-position'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          angle: servoAngle
+        })
+      }
+    );
+
+    const data = await response.json();
+    console.log(data)
+  };
+  
 
   useEffect(() => {
     let isMounted = true;
@@ -73,22 +133,38 @@ function App() {
     };
   }, []);
 
+  // When the [readings] array changes, get the value of brake/reset position
+  const latestBrakePosition = useMemo(() => {
+    return readings.find((reading) => reading.title === 'Brake Position')?.value;
+  }, [readings]);
+
+  const latestResetPosition = useMemo(() => {
+    return readings.find((reading) => reading.title === 'Reset Position')?.value;
+  }, [readings]);
+
   const groupedSummary = useMemo(() => {
     const map = new Map();
 
-    readings.forEach((reading) => {
-      const existing = map.get(reading.title);
-      if (!existing) {
-        map.set(reading.title, {
-          title: reading.title,
-          latestValue: reading.value,
-          latestTime: reading.timestamp,
-          count: 1
-        });
-      } else {
-        existing.count += 1;
-      }
-    });
+    readings
+      .filter(
+        (reading) =>
+          reading.title !== 'Brake Position' &&
+          reading.title !== 'Reset Position'
+      )
+      .forEach((reading) => {
+        const existing = map.get(reading.title);
+
+        if (!existing) {
+          map.set(reading.title, {
+            title: reading.title,
+            latestValue: reading.value,
+            latestTime: reading.timestamp,
+            count: 1
+          });
+        } else {
+          existing.count += 1;
+        }
+      });
 
     return [...map.values()];
   }, [readings]);
@@ -97,56 +173,160 @@ function App() {
   const formatDate = (iso) => new Date(iso).toLocaleString();
 
   return (
-    <div className="dashboard-shell">
-      <main className="dashboard">
-        <header className="dashboard-header">
-          <h1>ESP32 Sensor Dashboard</h1>
-          <p>
-            Live stream of float readings grouped by title.
-            {lastUpdated && ` Last refresh: ${lastUpdated}`}
-          </p>
-        </header>
+    
+      <div className="dashboard-shell">
+        <main className="dashboard">
+          <header className="dashboard-header">
+            <h1>ESP32 Sensor Dashboard</h1>
+            <p>
+              Live stream of float readings grouped by title & servo calibration.
+              {lastUpdated && ` Last refresh: ${lastUpdated}`}
+            </p>
+          </header>
 
-        {error && <div className="error-banner">API error: {error}</div>}
+          {error && <div className="error-banner">API error: {error}</div>}
 
-        <section className="summary-grid" aria-label="Reading summary by title">
-          {groupedSummary.length === 0 && (
-            <div className="empty-state">Waiting for ESP32 data...</div>
+          <div className="tab-bar">
+            <button class="button"onClick={() => setActiveTab('Sensor Dashboard')}>
+              Sensor Dashboard
+            </button>
+
+            <button class="button"onClick={() => setActiveTab('Servo Calibration')}>
+              Servo Calibration
+            </button>
+          </div>
+
+          {activeTab === 'Sensor Dashboard' && (
+            <>
+              <section className="summary-grid" aria-label="Reading summary by title">
+                {groupedSummary.length === 0 && (
+                  <div className="empty-state">Waiting for ESP32 data...</div>
+                )}
+
+                {groupedSummary.map((item) => (
+                  <article className="summary-card" key={item.title}>
+                    <h3>{item.title}</h3>
+                    <p className="summary-value">{formatNumber(item.latestValue)}</p>
+                    <p className="summary-meta">Readings: {item.count}</p>
+                    <p className="summary-meta">Latest: {formatDate(item.latestTime)}</p>
+                  </article>
+                ))}
+              </section>
+
+              <section className="table-wrap" aria-label="Recent readings">
+                <h2>Recent Readings</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Value</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {readings
+                      .filter(
+                        (reading) =>
+                          reading.title !== 'Brake Position' &&
+                          reading.title !== 'Reset Position'
+                      )
+                      .slice(0, 20)
+                      .map((reading, index) => (
+                        <tr key={`${reading.timestamp}-${reading.title}-${index}`}>
+                          <td>{reading.title}</td>
+                          <td>{formatNumber(reading.value)}</td>
+                          <td>{formatDate(reading.timestamp)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </section>
+            </>
           )}
+          {activeTab === 'Servo Calibration' && (
+            
+            <>
+              {groupedSummary.length === 0 && (
+                <div className="empty-state">Calibrate by using the slider or manually entering a value (0-180). Click the reset or brake position buttons to set positions.</div>
+              )}
+              <section className="table-wrap">
+                <h2>Servo Calibration</h2>
 
-          {groupedSummary.map((item) => (
-            <article className="summary-card" key={item.title}>
-              <h3>{item.title}</h3>
-              <p className="summary-value">{formatNumber(item.latestValue)}</p>
-              <p className="summary-meta">Readings: {item.count}</p>
-              <p className="summary-meta">Latest: {formatDate(item.latestTime)}</p>
-            </article>
-          ))}
-        </section>
+                <div className="servo-control">
+                  <label>
+                    Angle: {servoAngle}°
+                  </label>
 
-        <section className="table-wrap" aria-label="Recent readings">
-          <h2>Recent Readings</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Value</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {readings.slice(0, 20).map((reading, index) => (
-                <tr key={`${reading.timestamp}-${reading.title}-${index}`}>
-                  <td>{reading.title}</td>
-                  <td>{formatNumber(reading.value)}</td>
-                  <td>{formatDate(reading.timestamp)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      </main>
-    </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    value={servoAngle}
+                    onChange={(e) => setServoAngle(Number(e.target.value))}
+                  />
+
+                  <input
+                    type="number"
+                    min="0"
+                    max="180"
+                    value={servoAngle}
+                    onChange={(e) => {
+                      const value = Math.max(
+                        0,
+                        Math.min(180, Number(e.target.value))
+                      );
+                      setServoAngle(value);
+                    }}
+                  />
+
+                  <button class = "button" onClick={moveServoCommand}>
+                    Move Servo
+                  </button>
+                  
+                </div>
+              </section>
+
+              <section className="table-wrap">
+                <div className="servo-button-row">
+                  <button class = "button" onClick={setResetPositionCommand}>
+                    Set Reset Position
+                  </button>
+
+                  <button class = "button" onClick={setBrakePositionCommand}>
+                    Set Brake Position
+                  </button>
+                </div>
+              </section>
+
+              <section className="table-wrap">
+                  <div className="summary-grid">
+                    <article className="summary-card">
+                      <h3>Reset Position</h3>
+                      <p className="summary-value">
+                        {latestResetPosition ?? '--'}°
+                      </p>
+                    </article>
+
+                    <article className="summary-card">
+                      <h3>Brake Position</h3>
+                      <p className="summary-value">
+                        {latestBrakePosition ?? '--'}°
+                      </p>
+                    </article>
+
+                  </div>
+              </section>
+
+
+
+            </>
+          )}
+          
+
+
+
+        </main>
+      </div>
   );
 }
 

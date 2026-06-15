@@ -1,6 +1,9 @@
 const express = require('express');
 const { createReading, createPersistentReading, validateReadingPayload } = require('../lib/reading-store');
 
+// Initializes pendingCommand variable to store servo commands later on
+let pendingCommand = null;
+
 function createEsp32Router({
   readingStore,
   maxReadings,
@@ -38,6 +41,96 @@ function createEsp32Router({
     });
   });
 
+  // Route is called if dashboard posts brake position
+  router.post('/brake-position', (req, res) => {
+
+  const angle = Number(req.body.angle); // Reads angle from the request
+
+  // Checks if the angle is valid
+  if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Angle must be between 0 and 180'
+      });
+    }
+
+    // Stores the angle in pendingCommand
+    pendingCommand = {
+      type: 'setBrakePosition',
+      angle
+    };
+
+    console.log(`Brake position command queued: ${angle}`);
+
+    return res.status(200).json({
+      success: true,
+      command: pendingCommand
+    });
+  });
+
+  router.post('/reset-position', (req, res) => {
+    const angle = Number(req.body.angle);
+
+    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+        return res.status(400).json({
+          success: false,
+          error: 'Angle must be between 0 and 180'
+        });
+      }
+
+    pendingCommand = {
+      type: 'setResetPosition',
+      angle
+    };
+
+    console.log(`Reset position command queued: ${angle}`);
+
+    return res.status(200).json({
+      success: true,
+      command: pendingCommand
+      });
+  });
+
+  // Route is called if esp32 gets commands
+  router.get('/commands', (req, res) => {
+
+    const command = pendingCommand;
+
+    // Clears pendingCommand for next command
+    pendingCommand = null;
+
+    // Sends command to esp32
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
+  router.post('/move-servo', (req, res) => {
+
+    const angle = Number(req.body.angle);
+
+    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Angle must be between 0 and 180'
+      });
+    }
+
+    pendingCommand = {
+      type: 'moveServo',
+      angle
+    };
+
+    console.log(`Move servo command queued: ${angle}`);
+
+    return res.status(200).json({
+      success: true,
+      command: pendingCommand
+    });
+  });
+
+// Changed route to work with array posting from esp32
   router.post('/reading', ingestionLimiter, requireApiKey, async (req, res) => {
     const payload = validateReadingPayload(req.body);
 
@@ -48,23 +141,30 @@ function createEsp32Router({
       });
     }
 
-    const reading = createReading(req.deviceId, payload.title, payload.value);
-    readingStore.add(reading);
+    const readings = Array.isArray(payload.readings)
+      ? payload.readings
+      : [payload];
 
-    console.log(`ESP32 float reading received | ${reading.deviceId} | ${reading.title}: ${reading.value}`);
+    const saved = [];
 
-    if (supabaseEnabled) {
-      const persistentReading = createPersistentReading(reading);
+    for (const r of readings) {
+      if (!r || typeof r.title !== 'string') continue;
 
-      insertReading(persistentReading).catch((error) => {
-        console.error('Supabase insert failed (local accepted):', error);
-      });
+      const reading = createReading(
+        req.deviceId,
+        r.title,
+        r.value
+      );
+
+      readingStore.add(reading);
+      saved.push(reading);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Float reading received',
-      received: reading
+      message: 'Batch readings received',
+      count: saved.length,
+      received: saved
     });
   });
 
