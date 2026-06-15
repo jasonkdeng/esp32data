@@ -23,7 +23,6 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('Sensor Dashboard');
   const [servoAngle, setServoAngle] = useState(90);
-  const [servoStatus, setServoStatus] = useState('');
 
   const [readings, setReadings] = useState([]);
   const [error, setError] = useState('');
@@ -146,19 +145,26 @@ function App() {
   const groupedSummary = useMemo(() => {
     const map = new Map();
 
-    readings.forEach((reading) => {
-      const existing = map.get(reading.title);
-      if (!existing) {
-        map.set(reading.title, {
-          title: reading.title,
-          latestValue: reading.value,
-          latestTime: reading.timestamp,
-          count: 1
-        });
-      } else {
-        existing.count += 1;
-      }
-    });
+    readings
+      .filter(
+        (reading) =>
+          reading.title !== 'Brake Position' &&
+          reading.title !== 'Reset Position'
+      )
+      .forEach((reading) => {
+        const existing = map.get(reading.title);
+
+        if (!existing) {
+          map.set(reading.title, {
+            title: reading.title,
+            latestValue: reading.value,
+            latestTime: reading.timestamp,
+            count: 1
+          });
+        } else {
+          existing.count += 1;
+        }
+      });
 
     return [...map.values()];
   }, [readings]);
@@ -218,13 +224,20 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {readings.slice(0, 20).map((reading, index) => (
-                      <tr key={`${reading.timestamp}-${reading.title}-${index}`}>
-                        <td>{reading.title}</td>
-                        <td>{formatNumber(reading.value)}</td>
-                        <td>{formatDate(reading.timestamp)}</td>
-                      </tr>
-                    ))}
+                    {readings
+                      .filter(
+                        (reading) =>
+                          reading.title !== 'Brake Position' &&
+                          reading.title !== 'Reset Position'
+                      )
+                      .slice(0, 20)
+                      .map((reading, index) => (
+                        <tr key={`${reading.timestamp}-${reading.title}-${index}`}>
+                          <td>{reading.title}</td>
+                          <td>{formatNumber(reading.value)}</td>
+                          <td>{formatDate(reading.timestamp)}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </section>
@@ -269,10 +282,7 @@ function App() {
                   <button class = "button" onClick={moveServoCommand}>
                     Move Servo
                   </button>
-
-                  {servoStatus && (
-                    <p>{servoStatus}</p>
-                  )}
+                  
                 </div>
               </section>
 
