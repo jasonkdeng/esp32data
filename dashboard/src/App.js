@@ -139,8 +139,7 @@ function App() {
   }, [readings]);
 
   const latestResetPosition = useMemo(() => {
-    return readings.find((reading) => reading.title === 'Reset Position')?.value;
-  }, [readings]);
+    return readings.find((reading) => reading.title === 'Reset Position')?.value;}, [readings]);
 
   const groupedSummary = useMemo(() => {
     const map = new Map();
@@ -282,7 +281,7 @@ function App() {
                   <button class = "button" onClick={moveServoCommand}>
                     Move Servo
                   </button>
-                  
+
                 </div>
               </section>
 
