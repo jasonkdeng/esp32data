@@ -23,12 +23,32 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('Sensor Dashboard');
   const [servoAngle, setServoAngle] = useState(90);
+  const [actuatorPosition, setActuatorPosition] = useState(1400);
 
   const [readings, setReadings] = useState([]);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   
   // Sends requests to backend
+
+  const moveActuatorCommand = async () => {
+
+    const response = await fetch(
+      getApiUrl('/api/esp32/move-actuator'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          position: actuatorPosition
+        })
+      }
+    );
+
+    console.log(await response.json());
+  };
+
   const moveServoCommand = async () => {
 
     const response = await fetch(
@@ -193,6 +213,12 @@ function App() {
             <button class="button"onClick={() => setActiveTab('Servo Calibration')}>
               Servo Calibration
             </button>
+
+            <button class="button"onClick={() => setActiveTab('Linear Actuator Control')}>
+              Linear Actuator Control
+            </button>
+
+
           </div>
 
           {activeTab === 'Sensor Dashboard' && (
@@ -245,9 +271,7 @@ function App() {
           {activeTab === 'Servo Calibration' && (
             
             <>
-              {groupedSummary.length === 0 && (
-                <div className="empty-state">Calibrate by using the slider or manually entering a value (0-180). Click the reset or brake position buttons to set positions.</div>
-              )}
+              <div className="empty-state">Calibrate by using the slider or manually entering a value (0-180). Click the reset or brake position buttons to set positions.</div>
               <section className="table-wrap">
                 <h2>Servo Calibration</h2>
 
@@ -321,7 +345,51 @@ function App() {
             </>
           )}
           
+          {activeTab === 'Linear Actuator Control' && (
 
+            <>
+              <div className="empty-state">Control by using the slider or entering a position value 1075-1800</div>
+              
+              <section className="table-wrap">
+                <h2>Linear Actuator Control</h2>
+
+                <div className="servo-control">
+                  <label>
+                    Position: {actuatorPosition}µs
+                  </label>
+
+                  <input
+                    type="range"
+                    min="1075"
+                    max="1800"
+                    value={actuatorPosition}
+                    onChange={(e) => setActuatorPosition(Number(e.target.value))}
+                  />
+
+                  <input
+                    type="number"
+                    min="1075"
+                    max="1800"
+                    value={actuatorPosition}
+                    onChange={(e) => {
+                      const value = Math.max(
+                        1075,
+                        Math.min(1800, Number(e.target.value))
+                      );
+                      setActuatorPosition(value);
+                    }}
+                  />
+
+                  <button class = "button" onClick={moveActuatorCommand}>
+                    Move Actuator
+                  </button>
+
+                </div>
+              </section>
+
+            </>
+
+          )}
 
 
         </main>

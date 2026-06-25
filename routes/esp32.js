@@ -106,6 +106,27 @@ function createEsp32Router({
     });
   });
 
+  router.post('/move-actuator', (req, res) => {
+    const position = Number(req.body.position);
+
+    if (Number.isNaN(position) || position < 1075 || position > 1800) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position must be 1075-1800'
+      });
+    }
+
+    const command = addCommand({
+      type: 'moveActuator',
+      position
+    });
+
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
   router.post('/brake-position', (req, res) => {
     const angle = Number(req.body.angle);
 
