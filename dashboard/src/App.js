@@ -32,6 +32,10 @@ function App() {
   // Sends requests to backend
 
   const moveActuatorCommand = async () => {
+    const value = Math.max(
+      1075,
+      Math.min(1800, Number(actuatorPosition))
+    );
 
     const response = await fetch(
       getApiUrl('/api/esp32/move-actuator'),
@@ -41,7 +45,7 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          position: actuatorPosition
+          position: value
         })
       }
     );
@@ -50,16 +54,20 @@ function App() {
   };
 
   const moveServoCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
 
     const response = await fetch(
-      getApiUrl('/api/esp32/move-servo'), 
+      getApiUrl('/api/esp32/move-servo'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          angle: value
         })
       }
     );
@@ -68,6 +76,11 @@ function App() {
   };
 
   const setResetPositionCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
+
     const response = await fetch(
       getApiUrl('/api/esp32/reset-position'),
       {
@@ -76,16 +89,21 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          angle: value
         })
       }
     );
 
     const data = await response.json();
-    console.log(data)
+    console.log(data);
   };
 
   const setBrakePositionCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
+
     const response = await fetch(
       getApiUrl('/api/esp32/brake-position'),
       {
@@ -94,13 +112,13 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          angle: value
         })
       }
     );
 
     const data = await response.json();
-    console.log(data)
+    console.log(data);
   };
   
 
@@ -293,12 +311,15 @@ function App() {
                     min="0"
                     max="180"
                     value={servoAngle}
-                    onChange={(e) => {
-                      const value = Math.max(
-                        0,
-                        Math.min(180, Number(e.target.value))
-                      );
-                      setServoAngle(value);
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setServoAngle(e.target.value)}
+                    onBlur={() => {
+                      let v = Number(servoAngle);
+
+                      if (Number.isNaN(v)) v = 0;
+                      v = Math.max(0, Math.min(180, v));
+
+                      setServoAngle(String(v));
                     }}
                   />
 
@@ -362,8 +383,8 @@ function App() {
                     type="range"
                     min="1075"
                     max="1800"
-                    value={actuatorPosition}
-                    onChange={(e) => setActuatorPosition(Number(e.target.value))}
+                    value={Number(actuatorPosition)}
+                    onChange={(e) => setActuatorPosition(e.target.value)}
                   />
 
                   <input
@@ -371,12 +392,15 @@ function App() {
                     min="1075"
                     max="1800"
                     value={actuatorPosition}
-                    onChange={(e) => {
-                      const value = Math.max(
-                        1075,
-                        Math.min(1800, Number(e.target.value))
-                      );
-                      setActuatorPosition(value);
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setActuatorPosition(e.target.value)}
+                    onBlur={() => {
+                      let v = Number(actuatorPosition);
+
+                      if (Number.isNaN(v)) v = 1075;
+                      v = Math.max(1075, Math.min(1800, v));
+
+                      setActuatorPosition(String(v));
                     }}
                   />
 
