@@ -23,23 +23,51 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('Sensor Dashboard');
   const [servoAngle, setServoAngle] = useState(90);
+  const [actuatorPosition, setActuatorPosition] = useState(1400);
 
   const [readings, setReadings] = useState([]);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   
   // Sends requests to backend
-  const moveServoCommand = async () => {
+
+  const moveActuatorCommand = async () => {
+    const value = Math.max(
+      1075,
+      Math.min(1800, Number(actuatorPosition))
+    );
 
     const response = await fetch(
-      getApiUrl('/api/esp32/move-servo'), 
+      getApiUrl('/api/esp32/move-actuator'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          position: value
+        })
+      }
+    );
+
+    console.log(await response.json());
+  };
+
+  const moveServoCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
+
+    const response = await fetch(
+      getApiUrl('/api/esp32/move-servo'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          angle: value
         })
       }
     );
@@ -48,6 +76,11 @@ function App() {
   };
 
   const setResetPositionCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
+
     const response = await fetch(
       getApiUrl('/api/esp32/reset-position'),
       {
@@ -56,16 +89,21 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          angle: value
         })
       }
     );
 
     const data = await response.json();
-    console.log(data)
+    console.log(data);
   };
 
   const setBrakePositionCommand = async () => {
+    const value = Math.max(
+      0,
+      Math.min(180, Number(servoAngle))
+    );
+
     const response = await fetch(
       getApiUrl('/api/esp32/brake-position'),
       {
@@ -74,13 +112,13 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          angle: servoAngle
+          angle: value
         })
       }
     );
 
     const data = await response.json();
-    console.log(data)
+    console.log(data);
   };
   
 
@@ -139,8 +177,7 @@ function App() {
   }, [readings]);
 
   const latestResetPosition = useMemo(() => {
-    return readings.find((reading) => reading.title === 'Reset Position')?.value;
-  }, [readings]);
+    return readings.find((reading) => reading.title === 'Reset Position')?.value;}, [readings]);
 
   const groupedSummary = useMemo(() => {
     const map = new Map();
@@ -194,6 +231,12 @@ function App() {
             <button class="button"onClick={() => setActiveTab('Servo Calibration')}>
               Servo Calibration
             </button>
+
+            <button class="button"onClick={() => setActiveTab('Linear Actuator Control')}>
+              Linear Actuator Control
+            </button>
+
+
           </div>
 
           {activeTab === 'Sensor Dashboard' && (
@@ -246,9 +289,7 @@ function App() {
           {activeTab === 'Servo Calibration' && (
             
             <>
-              {groupedSummary.length === 0 && (
-                <div className="empty-state">Calibrate by using the slider or manually entering a value (0-180). Click the reset or brake position buttons to set positions.</div>
-              )}
+              <div className="empty-state">Calibrate by using the slider or manually entering a value (0-180). Click the reset or brake position buttons to set positions.</div>
               <section className="table-wrap">
                 <h2>Servo Calibration</h2>
 
@@ -270,19 +311,22 @@ function App() {
                     min="0"
                     max="180"
                     value={servoAngle}
-                    onChange={(e) => {
-                      const value = Math.max(
-                        0,
-                        Math.min(180, Number(e.target.value))
-                      );
-                      setServoAngle(value);
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setServoAngle(e.target.value)}
+                    onBlur={() => {
+                      let v = Number(servoAngle);
+
+                      if (Number.isNaN(v)) v = 0;
+                      v = Math.max(0, Math.min(180, v));
+
+                      setServoAngle(String(v));
                     }}
                   />
 
                   <button class = "button" onClick={moveServoCommand}>
                     Move Servo
                   </button>
-                  
+
                 </div>
               </section>
 
@@ -322,7 +366,54 @@ function App() {
             </>
           )}
           
+          {activeTab === 'Linear Actuator Control' && (
 
+            <>
+              <div className="empty-state">Control by using the slider or entering a position value 1075-1800</div>
+              
+              <section className="table-wrap">
+                <h2>Linear Actuator Control</h2>
+
+                <div className="servo-control">
+                  <label>
+                    Position: {actuatorPosition}µs
+                  </label>
+
+                  <input
+                    type="range"
+                    min="1075"
+                    max="1800"
+                    value={Number(actuatorPosition)}
+                    onChange={(e) => setActuatorPosition(e.target.value)}
+                  />
+
+                  <input
+                    type="number"
+                    min="1075"
+                    max="1800"
+                    value={actuatorPosition}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setActuatorPosition(e.target.value)}
+                    onBlur={() => {
+                      let v = Number(actuatorPosition);
+
+                      if (Number.isNaN(v)) v = 1075;
+                      v = Math.max(1075, Math.min(1800, v));
+
+                      setActuatorPosition(String(v));
+                    }}
+                  />
+
+                  <button class = "button" onClick={moveActuatorCommand}>
+                    Move Actuator
+                  </button>
+
+                </div>
+              </section>
+
+            </>
+
+          )}
 
 
         </main>

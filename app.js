@@ -14,10 +14,10 @@ function createApp({
   const app = express();
 
   app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://waturbineesp32dashboard.vercel.app/'); // frontend url
-  res.header('Access-Control-Allow-Headers', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  next();
+    res.header('Access-Control-Allow-Origin', 'https://waturbineesp32dashboard.vercel.app/'); // frontend url
+    res.header('Access-Control-Allow-Headers', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    next();
   });
 
   const readingStore = createReadingStore(maxReadings);

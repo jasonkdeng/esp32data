@@ -1,8 +1,6 @@
 const express = require('express');
-const { createReading, createPersistentReading, validateReadingPayload } = require('../lib/reading-store');
-
-// Initializes pendingCommand variable to store servo commands later on
-let pendingCommand = null;
+const { createReading, validateReadingPayload } = require('../lib/reading-store');
+const {addCommand, getNextCommand} = require('../lib/commands-store');
 
 function createEsp32Router({
   readingStore,
@@ -41,96 +39,6 @@ function createEsp32Router({
     });
   });
 
-  // Route is called if dashboard posts brake position
-  router.post('/brake-position', (req, res) => {
-
-  const angle = Number(req.body.angle); // Reads angle from the request
-
-  // Checks if the angle is valid
-  if (Number.isNaN(angle) || angle < 0 || angle > 180) {
-      return res.status(400).json({
-        success: false,
-        error: 'Angle must be between 0 and 180'
-      });
-    }
-
-    // Stores the angle in pendingCommand
-    pendingCommand = {
-      type: 'setBrakePosition',
-      angle
-    };
-
-    console.log(`Brake position command queued: ${angle}`);
-
-    return res.status(200).json({
-      success: true,
-      command: pendingCommand
-    });
-  });
-
-  router.post('/reset-position', (req, res) => {
-    const angle = Number(req.body.angle);
-
-    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
-        return res.status(400).json({
-          success: false,
-          error: 'Angle must be between 0 and 180'
-        });
-      }
-
-    pendingCommand = {
-      type: 'setResetPosition',
-      angle
-    };
-
-    console.log(`Reset position command queued: ${angle}`);
-
-    return res.status(200).json({
-      success: true,
-      command: pendingCommand
-      });
-  });
-
-  // Route is called if esp32 gets commands
-  router.get('/commands', (req, res) => {
-
-    const command = pendingCommand;
-
-    // Clears pendingCommand for next command
-    pendingCommand = null;
-
-    // Sends command to esp32
-    return res.status(200).json({
-      success: true,
-      command
-    });
-  });
-
-  router.post('/move-servo', (req, res) => {
-
-    const angle = Number(req.body.angle);
-
-    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
-      return res.status(400).json({
-        success: false,
-        error: 'Angle must be between 0 and 180'
-      });
-    }
-
-    pendingCommand = {
-      type: 'moveServo',
-      angle
-    };
-
-    console.log(`Move servo command queued: ${angle}`);
-
-    return res.status(200).json({
-      success: true,
-      command: pendingCommand
-    });
-  });
-
-// Changed route to work with array posting from esp32
   router.post('/reading', ingestionLimiter, requireApiKey, async (req, res) => {
     const payload = validateReadingPayload(req.body);
 
@@ -165,6 +73,99 @@ function createEsp32Router({
       message: 'Batch readings received',
       count: saved.length,
       received: saved
+    });
+  });
+
+  router.get('/commands', (req, res) => {
+    const command = getNextCommand();
+
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
+  router.post('/move-servo', (req, res) => {
+    const angle = Number(req.body.angle);
+
+    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Angle must be 0-180'
+      });
+    }
+
+    const command = addCommand({
+      type: 'moveServo',
+      angle
+    });
+
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
+  router.post('/move-actuator', (req, res) => {
+    const position = Number(req.body.position);
+
+    if (Number.isNaN(position) || position < 1075 || position > 1800) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position must be 1075-1800'
+      });
+    }
+
+    const command = addCommand({
+      type: 'moveActuator',
+      position
+    });
+
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
+  router.post('/brake-position', (req, res) => {
+    const angle = Number(req.body.angle);
+
+    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Angle must be 0-180'
+      });
+    }
+
+    const command = addCommand({
+      type: 'setBrakePosition',
+      angle
+    });
+
+    return res.status(200).json({
+      success: true,
+      command
+    });
+  });
+
+  router.post('/reset-position', (req, res) => {
+    const angle = Number(req.body.angle);
+
+    if (Number.isNaN(angle) || angle < 0 || angle > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Angle must be 0-180'
+      });
+    }
+
+    const command = addCommand({
+      type: 'setResetPosition',
+      angle
+    });
+
+    return res.status(200).json({
+      success: true,
+      command
     });
   });
 
